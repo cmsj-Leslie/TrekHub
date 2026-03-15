@@ -1,0 +1,77 @@
+:root {
+  --primary: #2d8cf0;
+  --primary-dark: #0070c0;
+  --success: #19be6b;
+  --warning: #ff9900;
+  --danger: #ed4014;
+  --text: #333;
+  --text-secondary: #666;
+  --text-muted: #999;
+  --bg: #f5f7fa;
+  --bg-card: #fff;
+  --border: #e8e8e8;
+  --shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+  --radius: 10px;
+
+  --sans: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: var(--sans);
+  background: var(--bg);
+  color: var(--text);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* 全局内容区容器 */
+.page-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 24px;
+}
+
+/* 链接样式 */
+a {
+  color: var(--primary);
+  text-decoration: none;
+}
+a:hover {
+  text-decoration: underline;
+}
+
+/* 页面过渡动画 */
+.fade-enter-active,
+.fade-leave-active {
+  transition: opacity 0.2s ease;
+}
+.fade-enter-from,
+.fade-leave-to {
+  opacity: 0;
+}
+
+/* Footer */
+.app-footer {
+  text-align: center;
+  padding: 24px 16px;
+  color: var(--text-muted);
+  font-size: 13px;
+  border-top: 1px solid var(--border);
+  margin-top: 40px;
+}
+.app-footer a {
+  color: var(--text-secondary);
+  margin: 0 8px;
+}
+
+/* 响应式布局 */
+@media (max-width: 768px) {
+  .page-container {
+    padding: 16px;
+  }
+}
