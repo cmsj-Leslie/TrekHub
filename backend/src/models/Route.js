@@ -1,4 +1,4 @@
-﻿/** 线路模型 - 字段：标题、难度、距离、海拔、时长、GPS起点、封面、浏览量、收藏量 */
+/** 线路模型 - 字段：标题、难度、距离、海拔、时长、GPS起点、封面、浏览量、收藏量 */
 const { DataTypes } = require('sequelize')
 const sequelize = require('../config/db')
 
@@ -17,6 +17,8 @@ const Route = sequelize.define('Route', {
   gpx_path:    { type: DataTypes.STRING(500) },
   region:      { type: DataTypes.STRING(50) },
   tags:        { type: DataTypes.JSON },
+  safety_note: { type: DataTypes.TEXT },
+  gear_list:   { type: DataTypes.STRING(500) },
   view_count:  { type: DataTypes.INTEGER.UNSIGNED, defaultValue: 0 },
   like_count:  { type: DataTypes.INTEGER.UNSIGNED, defaultValue: 0 },
   is_public:   { type: DataTypes.TINYINT(1), defaultValue: 1 },

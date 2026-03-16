@@ -17,6 +17,8 @@ export const getAdminUsers  = (params) => request.get('/admin/users', { params }
 export const updateUserRole = (id, role) => request.put(`/admin/users/${id}/role`, { role })
 // 编辑用户信息（昵称、简介、等级等）
 export const adminUpdateUser = (id, data) => request.put(`/admin/users/${id}`, data)
+// 删除用户
+export const adminDeleteUser  = (id) => request.delete(`/admin/users/${id}`)
 // 获取线路管理列表
 export const getAdminRoutes  = (params) => request.get('/admin/routes', { params })
 // 编辑线路信息

@@ -42,10 +42,56 @@ exports.remove = async (req, res) => {
   success(res, null, '删除成功')
 }
 
-// 点赞评论
+// 点赞/取消点赞评论（toggle）
 exports.like = async (req, res) => {
-  const comment = await Comment.findByPk(req.params.id)
+  const sequelize = require('../config/db')
+  const commentId = +req.params.id
+  const userId = req.user.id
+
+  // 确保 comment_likes 表存在
+  await sequelize.query(`
+    CREATE TABLE IF NOT EXISTS comment_likes (
+      user_id    INT UNSIGNED NOT NULL,
+      comment_id INT UNSIGNED NOT NULL,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      PRIMARY KEY (user_id, comment_id)
+    )
+  `)
+
+  const comment = await Comment.findByPk(commentId)
   if (!comment) return notFound(res)
-  await comment.increment('like_count')
-  success(res, { like_count: comment.like_count + 1 })
+
+  // 检查是否已点赞
+  const [existing] = await sequelize.query(
+    'SELECT 1 FROM comment_likes WHERE user_id = ? AND comment_id = ?',
+    { replacements: [userId, commentId], type: sequelize.QueryTypes.SELECT }
+  )
+
+  if (existing) {
+    // 取消点赞
+    await sequelize.query('DELETE FROM comment_likes WHERE user_id = ? AND comment_id = ?',
+      { replacements: [userId, commentId] })
+    await comment.decrement('like_count')
+    success(res, { liked: false, like_count: Math.max(0, comment.like_count - 1) })
+  } else {
+    // 点赞
+    await sequelize.query('INSERT INTO comment_likes (user_id, comment_id) VALUES (?, ?)',
+      { replacements: [userId, commentId] })
+    await comment.increment('like_count')
+    success(res, { liked: true, like_count: comment.like_count + 1 })
+  }
+}
+
+// 批量查询当前用户对一组评论的点赞状态
+exports.checkLikes = async (req, res) => {
+  const sequelize = require('../config/db')
+  const { ids } = req.query  // 逗号分隔 comment ids
+  if (!ids) return success(res, [])
+  const idArr = ids.split(',').map(Number).filter(Boolean)
+  if (!idArr.length) return success(res, [])
+  const rows = await sequelize.query(
+    `SELECT comment_id FROM comment_likes WHERE user_id = ? AND comment_id IN (?)`,
+    { replacements: [req.user.id, idArr], type: sequelize.QueryTypes.SELECT }
+  )
+  success(res, rows.map(r => r.comment_id))
 }

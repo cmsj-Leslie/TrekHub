@@ -47,6 +47,7 @@
               <n-input v-model:value="routeKeyword" placeholder="🔍 搜索线路名称" clearable
                 style="width:300px" @keyup.enter="loadRoutes" />
               <n-button type="primary" size="small" @click="loadRoutes">搜索</n-button>
+              <n-button type="success" size="small" @click="$router.push('/routes/create')">➕ 新增线路</n-button>
             </div>
             <span class="result-count">共 {{ routeTotal }} 条线路</span>
           </div>
@@ -163,7 +164,7 @@ import {
   useMessage
 } from 'naive-ui'
 import {
-  getAdminStats, getAdminUsers, updateUserRole, adminUpdateUser,
+  getAdminStats, getAdminUsers, updateUserRole, adminUpdateUser, adminDeleteUser,
   getAdminRoutes, adminUpdateRoute, adminDeleteRoute,
   getAdminComments, adminDeleteComment
 } from '@/api/admin'
@@ -237,8 +238,13 @@ const userColumns = [
     render: r => fmtDate(r.createdAt)
   },
   {
-    title: '操作', key: 'actions', width: 80,
-    render: r => h(NButton, { size: 'tiny', type: 'info', onClick: () => openEditUser(r) }, () => '编辑')
+    title: '操作', key: 'actions', width: 140,
+    render: r => h(NSpace, { size: 'small' }, () => [
+      h(NButton, { size: 'tiny', type: 'info', onClick: () => openEditUser(r) }, () => '编辑'),
+      h(NPopconfirm, { positiveText: '确认删除', negativeText: '取消', onPositiveClick: () => deleteUser(r.id) },
+        { trigger: () => h(NButton, { size: 'tiny', type: 'error', ghost: true, disabled: r.role === 1 }, () => '删除'),
+          default: () => `确认删除用户「${r.nickname || r.username}」？此操作不可恢复` })
+    ])
   }
 ]
 
@@ -254,6 +260,12 @@ async function loadUsers() {
 async function setRole(id, role) {
   await updateUserRole(id, role)
   msg.success('角色已更新')
+  loadUsers()
+}
+
+async function deleteUser(id) {
+  await adminDeleteUser(id)
+  msg.success('用户已删除')
   loadUsers()
 }
 

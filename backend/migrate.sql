@@ -1,0 +1,2 @@
+ALTER TABLE routes ADD COLUMN safety_note TEXT NULL;
+ALTER TABLE routes ADD COLUMN gear_list VARCHAR(500) NULL;

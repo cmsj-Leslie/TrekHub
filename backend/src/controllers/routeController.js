@@ -53,11 +53,11 @@ exports.detail = async (req, res) => {
 
 // 创建线路（含坐标点批量插入）
 exports.create = async (req, res) => {
-  const { title, description, difficulty, distance_km, elevation_m, duration_h, start_lng, start_lat, region, tags, points } = req.body
+  const { title, description, difficulty, distance_km, elevation_m, duration_h, start_lng, start_lat, region, tags, points, safety_note, gear_list } = req.body
   if (!title || !start_lng || !start_lat) return fail(res, '缺少必填字段')
   const route = await Route.create({
     creator_id: req.user.id, title, description, difficulty, distance_km, elevation_m,
-    duration_h, start_lng, start_lat, region, tags,
+    duration_h, start_lng, start_lat, region, tags, safety_note, gear_list,
     cover_image: req.file ? `/uploads/images/${req.file.filename}` : null
   })
   // 批量插入 GPS 坐标点
@@ -73,7 +73,7 @@ exports.update = async (req, res) => {
   const route = await Route.findByPk(req.params.id)
   if (!route) return notFound(res)
   if (route.creator_id !== req.user.id) return forbidden(res)
-  const allowed = ['title', 'description', 'difficulty', 'distance_km', 'elevation_m', 'duration_h', 'region', 'tags', 'is_public']
+  const allowed = ['title', 'description', 'difficulty', 'distance_km', 'elevation_m', 'duration_h', 'region', 'tags', 'is_public', 'safety_note', 'gear_list']
   const update = {}
   allowed.forEach(k => { if (req.body[k] !== undefined) update[k] = req.body[k] })
   if (req.file) update.cover_image = `/uploads/images/${req.file.filename}`

@@ -25,9 +25,11 @@
             <n-space v-if="comment.images?.length" style="margin-top:8px">
               <img v-for="img in comment.images" :key="img" :src="img" style="width:80px;height:80px;object-fit:cover;border-radius:4px" />
             </n-space>
-            <!-- 回复 -->
-            <n-space style="margin-top:6px">
-              <n-button text size="small" @click="likeComment(comment)">👍 {{ comment.like_count }}</n-button>
+            <!-- 操作按钮 -->
+            <n-space style="margin-top:6px" align="center">
+              <button class="like-btn" :class="{ liked: likedSet.has(comment.id) }" @click="toggleLike(comment)">
+                👍 <span>{{ comment.like_count || 0 }}</span>
+              </button>
               <n-button text size="small" @click="replyTo = comment.id">回复</n-button>
               <n-button v-if="comment.user_id === userStore.info?.id" text size="small" type="error" @click="deleteComment(comment.id)">删除</n-button>
             </n-space>
@@ -60,10 +62,10 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, reactive, onMounted } from 'vue'
 import { NSpace, NAvatar, NInput, NButton, NDivider, NSpin, NRate, useMessage } from 'naive-ui'
 import { smartTime } from '@/utils/timeUtils'
-import { getComments, createComment, removeComment, likeComment as apiLike } from '@/api/social'
+import { getComments, createComment, removeComment, likeComment as apiLike, checkCommentLikes } from '@/api/social'
 import { useUserStore } from '@/stores/user'
 
 const props = defineProps({
@@ -81,13 +83,22 @@ const submitting = ref(false)
 const form = ref({ content: '', rating: 0 })
 const replyTo = ref(null)
 const replyContent = ref('')
+const likedSet = reactive(new Set())
 
 async function load(reset = false) {
-  if (reset) { page.value = 1; list.value = [] }
+  if (reset) { page.value = 1; list.value = []; likedSet.clear() }
   loading.value = true
   const res = await getComments({ target_type: props.targetType, target_id: props.targetId, page: page.value }).finally(() => loading.value = false)
   total.value = res.data.total
   list.value = reset ? res.data.list : [...list.value, ...res.data.list]
+  // 批量加载当前用户的点赞状态
+  if (userStore.isLoggedIn && list.value.length) {
+    try {
+      const ids = list.value.map(c => c.id)
+      const likeRes = await checkCommentLikes(ids)
+      likeRes.data.forEach(id => likedSet.add(id))
+    } catch (e) { /* 未登录或接口异常忽略 */ }
+  }
 }
 
 function loadMore() { page.value++; load() }
@@ -110,9 +121,15 @@ async function submitReply(parentId) {
   load(true)
 }
 
-async function likeComment(comment) {
-  await apiLike(comment.id)
-  comment.like_count++
+async function toggleLike(comment) {
+  if (!userStore.isLoggedIn) return msg.warning('请先登录')
+  const res = await apiLike(comment.id)
+  comment.like_count = res.data.like_count
+  if (res.data.liked) {
+    likedSet.add(comment.id)
+  } else {
+    likedSet.delete(comment.id)
+  }
 }
 
 async function deleteComment(id) {
@@ -123,3 +140,32 @@ async function deleteComment(id) {
 
 onMounted(() => load(true))
 </script>
+
+<style scoped>
+.like-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: none;
+  border: 1px solid #e0e0e0;
+  border-radius: 16px;
+  padding: 2px 10px;
+  font-size: 13px;
+  color: #666;
+  cursor: pointer;
+  transition: all .2s;
+}
+.like-btn:hover {
+  border-color: #f43f5e;
+  color: #f43f5e;
+}
+.like-btn.liked {
+  background: #fef2f2;
+  border-color: #f43f5e;
+  color: #f43f5e;
+  font-weight: 600;
+}
+.like-btn:active {
+  transform: scale(1.15);
+}
+</style>

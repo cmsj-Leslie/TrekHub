@@ -1,4 +1,4 @@
-﻿/** 后台管理路由 - 统计面板、用户/线路/评论管理(需管理员权限) */
+/** 后台管理路由 - 统计面板、用户/线路/评论管理(需管理员权限) */
 const router = require('express').Router()
 const auth = require('../middleware/auth')
 const adminAuth = require('../middleware/adminAuth')
@@ -15,6 +15,7 @@ router.get('/stats', wrap(c.stats))
 router.get('/users', wrap(c.userList))
 router.put('/users/:id/role', wrap(c.updateRole))
 router.put('/users/:id', wrap(c.updateUser))
+router.delete('/users/:id', wrap(c.deleteUser))
 router.get('/routes', wrap(c.routeList))
 router.put('/routes/:id', wrap(c.updateRoute))
 router.delete('/routes/:id', wrap(c.deleteRoute))

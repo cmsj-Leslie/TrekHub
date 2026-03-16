@@ -86,6 +86,15 @@ exports.deleteRoute = async (req, res) => {
   success(res, null, '线路已删除')
 }
 
+// 删除用户（硬删除，不能删自己）
+exports.deleteUser = async (req, res) => {
+  const user = await User.findByPk(req.params.id)
+  if (!user) return fail(res, '用户不存在')
+  if (user.id === req.user.id) return fail(res, '不能删除当前登录的管理员账号')
+  await user.destroy()
+  success(res, null, `用户 ${user.nickname || user.username} 已删除`)
+}
+
 // 删除评论
 exports.deleteComment = async (req, res) => {
   const comment = await Comment.findByPk(req.params.id)

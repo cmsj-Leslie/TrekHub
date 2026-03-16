@@ -94,6 +94,17 @@
       <div style="line-height:1.8;white-space:pre-wrap">{{ route.description }}</div>
     </n-card>
 
+    <!-- 安全提示 -->
+    <div v-if="route.safety_note" class="safety-card" style="margin-top:16px">
+      <div class="safety-header">⚠️ 安全提示</div>
+      <div class="safety-body">{{ route.safety_note }}</div>
+    </div>
+
+    <!-- 建议装备 -->
+    <n-card v-if="route.gear_list" title="🎒 建议装备" style="margin-top:16px">
+      <div style="line-height:1.8">{{ route.gear_list }}</div>
+    </n-card>
+
     <!-- 评论 -->
     <n-card title="评价与讨论" style="margin-top:16px">
       <CommentList :target-type="1" :target-id="route.id" />
@@ -117,7 +128,16 @@ const vueRoute = useRoute()
 const route = ref(null)
 const elevCanvas = ref(null)
 
-const { favorited, check, toggle } = useFavorite(1, +vueRoute.params.id)
+const { favorited, check, toggle: rawToggle } = useFavorite(1, +vueRoute.params.id)
+
+// 收藏切换后同步更新页面显示的收藏数
+async function toggle() {
+  await rawToggle()
+  if (route.value) {
+    route.value.like_count += favorited.value ? 1 : -1
+  }
+}
+
 const { init, drawRoute } = useMap('route-map')
 
 const difficultyLabel = (d) => ['', '简单', '中等', '困难', '专家', '极限'][d] || '中等'
@@ -291,6 +311,30 @@ onMounted(async () => {
 .stat-meta {
   display: flex; flex-direction: column; gap: 6px;
   font-size: 13px; color: #666;
+}
+
+/* 安全提示卡片 */
+.safety-card {
+  background: #fffbf0;
+  border: 1px solid #fde68a;
+  border-left: 4px solid #f59e0b;
+  border-radius: 10px;
+  overflow: hidden;
+}
+.safety-header {
+  padding: 12px 16px;
+  font-size: 15px;
+  font-weight: 700;
+  color: #92400e;
+  background: rgba(245, 158, 11, .08);
+  border-bottom: 1px solid #fde68a;
+}
+.safety-body {
+  padding: 14px 16px;
+  font-size: 14px;
+  color: #78350f;
+  line-height: 1.8;
+  white-space: pre-wrap;
 }
 
 @media (max-width: 768px) {

@@ -95,7 +95,10 @@
       <n-spin :show="followListLoading">
         <div v-if="followList.length" class="follow-list">
           <div v-for="u in followList" :key="u.id" class="follow-item" @click="goProfile(u.id)">
-            <n-avatar :src="u.avatar" :size="44" round>{{ u.nickname?.[0] }}</n-avatar>
+            <n-avatar v-if="u.avatar" :src="u.avatar" :size="44" round />
+            <div v-else class="follow-avatar-fallback" :style="{ background: avatarColor(u.id) }">
+              {{ u.nickname?.[0] || '?' }}
+            </div>
             <div class="follow-info">
               <div class="follow-name">{{ u.nickname }}
                 <span class="follow-level">Lv.{{ u.level }}</span>
@@ -113,7 +116,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { NAvatar, NTag, NTabs, NTabPane, NGrid, NGridItem, NButton, NEmpty, NModal, NSpin, useMessage } from 'naive-ui'
 import { getProfile, getUserSkills, toggleFollow, getFollowInfo, getFollowers, getFollowing } from '@/api/user'
@@ -127,12 +130,16 @@ const router = useRouter()
 const userStore = useUserStore()
 const msg = useMessage()
 
-const userId = +vueRoute.params.id
+const userId = computed(() => +vueRoute.params.id)
 const user = ref(null)
 const skills = ref([])
 const followInfo = ref({ followerCount: 0, followingCount: 0, isFollowed: false })
 
-const isSelf = computed(() => userStore.info?.id === userId)
+const isSelf = computed(() => userStore.info?.id === userId.value)
+
+// 头像颜色调色板（无头像时按 ID 生成稳定的彩色背景）
+const avatarColors = ['#3b82f6','#10b981','#f59e0b','#ef4444','#8b5cf6','#ec4899','#06b6d4','#f97316']
+function avatarColor(id) { return avatarColors[(id || 0) % avatarColors.length] }
 
 const showFollowModal = ref(false)
 const followModalType = ref('followers')
@@ -144,7 +151,7 @@ async function openFollowModal(type) {
   showFollowModal.value = true
   followListLoading.value = true
   try {
-    const res = type === 'followers' ? await getFollowers(userId) : await getFollowing(userId)
+    const res = type === 'followers' ? await getFollowers(userId.value) : await getFollowing(userId.value)
     followList.value = res.data
   } finally { followListLoading.value = false }
 }
@@ -154,27 +161,34 @@ function goProfile(id) {
   router.push(`/profile/${id}`)
 }
 
-onMounted(async () => {
+// 加载用户资料、技能、关注信息
+async function loadProfileData() {
+  const id = userId.value
   const [profileRes, skillRes, followRes] = await Promise.all([
-    getProfile(userId),
-    getUserSkills(userId),
-    getFollowInfo(userId)
+    getProfile(id),
+    getUserSkills(id),
+    getFollowInfo(id)
   ])
   user.value   = profileRes.data
   skills.value = skillRes.data
   followInfo.value = followRes.data
-})
+}
+
+onMounted(loadProfileData)
+
+// 监听路由参数变化，切换不同用户主页时重新加载数据
+watch(userId, () => { loadProfileData() })
 
 async function doToggleFollow() {
   if (!userStore.isLoggedIn) return msg.warning('请先登录')
-  const res = await toggleFollow(userId)
+  const res = await toggleFollow(userId.value)
   followInfo.value.isFollowed = res.data.followed
   followInfo.value.followerCount += res.data.followed ? 1 : -1
   msg.success(res.data.followed ? '已关注' : '已取消关注')
 }
 
 async function startChat() {
-  const res = await createPrivateRoom(userId)
+  const res = await createPrivateRoom(userId.value)
   router.push(`/chat/${res.data.roomId}`)
 }
 </script>
@@ -342,4 +356,10 @@ async function startChat() {
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
 .follow-arrow { font-size: 18px; color: #ccc; }
+.follow-avatar-fallback {
+  width: 44px; height: 44px; border-radius: 50%; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  color: #fff; font-size: 18px; font-weight: 700;
+  box-shadow: 0 2px 8px rgba(0,0,0,.1);
+}
 </style>

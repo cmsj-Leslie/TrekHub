@@ -50,7 +50,8 @@
             </div>
             <div class="msg-content">
               <div class="msg-label">{{ m.role === 'user' ? '你' : 'AI 助手' }}</div>
-              <div :class="['msg-bubble', m.role]">{{ m.content }}</div>
+              <div v-if="m.role === 'user'" :class="['msg-bubble', m.role]">{{ m.content }}</div>
+              <div v-else :class="['msg-bubble', m.role, 'md-content']" v-html="renderMd(m.content)"></div>
             </div>
           </div>
           <div v-if="aiStore.loading" class="msg-row assistant">
@@ -72,10 +73,10 @@
             placeholder="输入你的问题... Ctrl+Enter 发送"
             style="flex:1"
             @keydown.ctrl.enter.prevent="send" />
-          <n-button type="primary" round :loading="aiStore.loading" @click="send"
-            style="height:auto;min-width:80px;align-self:flex-end">
-            发送 ✈️
-          </n-button>
+          <button class="send-btn" :disabled="aiStore.loading || !inputMsg.trim()" @click="send">
+            <svg v-if="!aiStore.loading" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+            <span v-else class="send-loading"></span>
+          </button>
         </div>
       </div>
     </div>
@@ -86,6 +87,14 @@
 import { ref, computed, nextTick } from 'vue'
 import { NInput, NButton, useMessage } from 'naive-ui'
 import { useAiStore } from '@/stores/ai'
+import { marked } from 'marked'
+
+// 配置 marked
+marked.setOptions({ breaks: true, gfm: true })
+function renderMd(text) {
+  if (!text) return ''
+  return marked.parse(text)
+}
 
 const aiStore = useAiStore()
 const msg = useMessage()
@@ -279,6 +288,100 @@ async function clearSession() {
   border: 1px solid #eee;
   border-top-left-radius: 4px;
 }
+
+/* Markdown 内容样式 */
+.md-content :deep(h1),
+.md-content :deep(h2),
+.md-content :deep(h3) {
+  margin: 12px 0 6px;
+  font-weight: 700;
+  color: #1a1a2e;
+  line-height: 1.4;
+}
+.md-content :deep(h1) { font-size: 18px; }
+.md-content :deep(h2) { font-size: 16px; }
+.md-content :deep(h3) { font-size: 15px; }
+.md-content :deep(p) { margin: 6px 0; }
+.md-content :deep(ul),
+.md-content :deep(ol) {
+  margin: 6px 0;
+  padding-left: 20px;
+}
+.md-content :deep(li) {
+  margin: 4px 0;
+  line-height: 1.7;
+}
+.md-content :deep(li)::marker {
+  color: #2563eb;
+}
+.md-content :deep(strong) {
+  color: #1e3a5f;
+  font-weight: 700;
+}
+.md-content :deep(em) {
+  color: #0d9488;
+  font-style: italic;
+}
+.md-content :deep(code) {
+  background: #f0f5ff;
+  color: #2563eb;
+  padding: 1px 5px;
+  border-radius: 4px;
+  font-size: 13px;
+  font-family: 'Menlo', 'Monaco', 'Consolas', monospace;
+}
+.md-content :deep(pre) {
+  background: #1e293b;
+  color: #e2e8f0;
+  padding: 12px 14px;
+  border-radius: 8px;
+  overflow-x: auto;
+  margin: 8px 0;
+  font-size: 13px;
+  line-height: 1.5;
+}
+.md-content :deep(pre code) {
+  background: none;
+  color: inherit;
+  padding: 0;
+}
+.md-content :deep(blockquote) {
+  border-left: 3px solid #2563eb;
+  margin: 8px 0;
+  padding: 4px 12px;
+  background: #f0f9ff;
+  color: #555;
+  border-radius: 0 6px 6px 0;
+}
+.md-content :deep(table) {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 8px 0;
+  font-size: 13px;
+}
+.md-content :deep(th),
+.md-content :deep(td) {
+  border: 1px solid #e5e7eb;
+  padding: 6px 10px;
+  text-align: left;
+}
+.md-content :deep(th) {
+  background: #f0f5ff;
+  font-weight: 600;
+  color: #1e3a5f;
+}
+.md-content :deep(hr) {
+  border: none;
+  border-top: 1px solid #e5e7eb;
+  margin: 10px 0;
+}
+.md-content :deep(a) {
+  color: #2563eb;
+  text-decoration: none;
+}
+.md-content :deep(a:hover) {
+  text-decoration: underline;
+}
 .msg-bubble.typing {
   display: flex;
   align-items: center;
@@ -303,9 +406,46 @@ async function clearSession() {
 /* Input */
 .input-area {
   display: flex;
-  gap: 10px;
-  padding: 12px 16px;
+  gap: 12px;
+  padding: 14px 16px;
   border-top: 1px solid #f0f0f0;
   background: #fff;
+  align-items: flex-end;
 }
+.send-btn {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  border: none;
+  background: linear-gradient(135deg, #2563eb, #0ea5e9);
+  color: #fff;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: all .25s;
+  box-shadow: 0 4px 14px rgba(37, 99, 235, .35);
+}
+.send-btn:hover:not(:disabled) {
+  transform: scale(1.08);
+  box-shadow: 0 6px 20px rgba(37, 99, 235, .45);
+}
+.send-btn:active:not(:disabled) {
+  transform: scale(0.95);
+}
+.send-btn:disabled {
+  opacity: .45;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+.send-loading {
+  width: 18px;
+  height: 18px;
+  border: 2px solid rgba(255,255,255,.3);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: spin .7s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg) } }
 </style>

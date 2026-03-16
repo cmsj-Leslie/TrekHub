@@ -13,6 +13,8 @@ export const createComment  = (data)   => request.post('/comments', data)
 export const removeComment  = (id)     => request.delete(`/comments/${id}`)
 // 点赞/取消点赞评论
 export const likeComment    = (id)     => request.post(`/comments/${id}/like`)
+// 批量检查评论点赞状态
+export const checkCommentLikes = (ids) => request.get('/comments/check-likes', { params: { ids: ids.join(',') } })
 
 // ===== 收藏 =====
 // 收藏或取消收藏

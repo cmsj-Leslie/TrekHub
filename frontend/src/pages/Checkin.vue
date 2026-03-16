@@ -52,7 +52,13 @@
             <div v-if="c.title" class="item-title">{{ c.title }}</div>
             <div v-if="c.content" class="item-text">{{ c.content }}</div>
             <div v-if="c.images?.length" class="item-images">
-              <img v-for="img in c.images.slice(0,4)" :key="img" :src="img" class="thumb" />
+              <n-image-group>
+                <n-space :size="6">
+                  <n-image v-for="img in c.images.slice(0,4)" :key="img" :src="img"
+                    width="80" height="80" object-fit="cover"
+                    style="border-radius:8px;border:1px solid #f0f0f0;cursor:pointer" />
+                </n-space>
+              </n-image-group>
             </div>
             <div class="item-meta">
               <span v-if="c.distance_km" class="meta-tag blue">📏 {{ c.distance_km }} km</span>
@@ -108,7 +114,7 @@ import { ref, computed, onMounted } from 'vue'
 import {
   NCard, NSpace, NButton, NSpin, NAvatar, NModal, NEmpty, NPagination,
   NForm, NFormItem, NInput, NInputNumber, NUpload, NSelect, NGrid, NGridItem, NDivider,
-  useMessage
+  NImage, NImageGroup, useMessage
 } from 'naive-ui'
 import dayjs from 'dayjs'
 import { createCheckin, getCheckins, getCheckinCalendar } from '@/api/social'
