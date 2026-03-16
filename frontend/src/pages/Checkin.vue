@@ -40,7 +40,8 @@
       <div class="checkin-list">
         <div v-for="c in list" :key="c.id" class="checkin-item">
           <div class="item-left">
-            <n-avatar :src="c.user?.avatar" :size="36" round>{{ c.user?.nickname?.[0] }}</n-avatar>
+            <n-avatar v-if="c.user?.avatar" :src="c.user?.avatar" :size="36" round />
+            <n-avatar v-else :size="36" round>{{ c.user?.nickname?.[0] }}</n-avatar>
             <div class="timeline-line" />
           </div>
           <div class="item-content">
@@ -247,6 +248,7 @@ onMounted(async () => {
   flex-direction: column;
   align-items: center;
   flex-shrink: 0;
+  width: 36px;
 }
 .timeline-line {
   width: 2px;

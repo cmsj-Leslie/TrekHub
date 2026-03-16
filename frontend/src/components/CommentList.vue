@@ -12,12 +12,13 @@
       <div v-if="!list.length" style="text-align:center;color:#999;padding:24px">暂无评论</div>
       <div v-for="comment in list" :key="comment.id" style="margin-bottom:20px">
         <n-space align="start">
-          <n-avatar :src="comment.user?.avatar" round size="small">{{ comment.user?.nickname?.[0] }}</n-avatar>
+          <n-avatar v-if="comment.user?.avatar" :src="comment.user?.avatar" round size="small" />
+          <n-avatar v-else round size="small">{{ comment.user?.nickname?.[0] }}</n-avatar>
           <div style="flex:1">
             <n-space align="center" style="margin-bottom:4px">
               <span style="font-weight:600;font-size:13px">{{ comment.user?.nickname }}</span>
               <n-rate v-if="comment.rating" :value="comment.rating" readonly size="small" />
-              <span style="color:#aaa;font-size:12px">{{ dayjs(comment.created_at).fromNow() }}</span>
+              <span style="color:#aaa;font-size:12px">{{ smartTime(comment.created_at) }}</span>
             </n-space>
             <div style="font-size:14px;line-height:1.6">{{ comment.content }}</div>
             <!-- 图片 -->
@@ -41,7 +42,8 @@
             <!-- 子评论 -->
             <div v-for="reply in comment.replies" :key="reply.id" style="margin-top:10px;padding-left:12px;border-left:2px solid #eee">
               <n-space align="center">
-                <n-avatar :src="reply.user?.avatar" round size="tiny">{{ reply.user?.nickname?.[0] }}</n-avatar>
+                <n-avatar v-if="reply.user?.avatar" :src="reply.user?.avatar" round size="tiny" />
+                <n-avatar v-else round size="tiny">{{ reply.user?.nickname?.[0] }}</n-avatar>
                 <span style="font-weight:600;font-size:12px">{{ reply.user?.nickname }}</span>
               </n-space>
               <div style="font-size:13px;margin-top:4px">{{ reply.content }}</div>
@@ -60,13 +62,9 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { NSpace, NAvatar, NInput, NButton, NDivider, NSpin, NRate, useMessage } from 'naive-ui'
-import dayjs from 'dayjs'
-import relativeTime from 'dayjs/plugin/relativeTime'
+import { smartTime } from '@/utils/timeUtils'
 import { getComments, createComment, removeComment, likeComment as apiLike } from '@/api/social'
 import { useUserStore } from '@/stores/user'
-
-dayjs.extend(relativeTime)
-dayjs.locale('zh-cn')
 
 const props = defineProps({
   targetType: { type: Number, required: true },

@@ -94,7 +94,7 @@
                 <n-avatar :src="c.user?.avatar" round size="small" />
                 <span style="font-weight:600;font-size:14px">{{ c.user?.nickname }}</span>
               </n-space>
-              <span style="color:#999;font-size:12px">{{ dayjs(c.checkin_at).fromNow() }}</span>
+              <span style="color:#999;font-size:12px">{{ smartTime(c.checkin_at) }}</span>
             </n-space>
             <div v-if="c.title" style="font-weight:600;margin-top:6px;font-size:14px">{{ c.title }}</div>
             <div v-if="c.content" style="color:#666;font-size:13px;margin-top:4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ c.content }}</div>
@@ -116,9 +116,7 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { NGrid, NGridItem, NDivider, NButton, NSpace, NSpin, NCard, NTag, NAvatar, NEmpty, NEllipsis } from 'naive-ui'
-import dayjs from 'dayjs'
-import relativeTime from 'dayjs/plugin/relativeTime'
-import 'dayjs/locale/zh-cn'
+import { smartTime } from '@/utils/timeUtils'
 import { useUserStore } from '@/stores/user'
 import { getRoutes, getRecommended } from '@/api/route'
 import { getActivities } from '@/api/activity'
@@ -126,8 +124,7 @@ import { getCheckins } from '@/api/social'
 import { getPublicStats } from '@/api/admin'
 import RouteCard from '@/components/RouteCard.vue'
 
-dayjs.extend(relativeTime)
-dayjs.locale('zh-cn')
+
 
 const userStore = useUserStore()
 const list = ref([])
