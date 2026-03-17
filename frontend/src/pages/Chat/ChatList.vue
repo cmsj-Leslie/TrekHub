@@ -14,16 +14,21 @@
         <div v-for="room in chatStore.rooms" :key="room.id"
           :class="['room-item', { active: room.id === selectedRoomId }]"
           @click="selectRoom(room)">
-          <div class="room-avatar">
-            {{ (room.name || (room.type === 1 ? '私信' : '群'))[0] }}
+          <!-- 头像：私聊显示对方头像，群聊显示类型标识 -->
+          <div v-if="room.type === 1 && room.other_avatar" class="room-avatar-img">
+            <img :src="room.other_avatar" />
+          </div>
+          <div v-else class="room-avatar" :style="{ background: room.type === 1 ? 'linear-gradient(135deg,#a78bfa,#7c3aed)' : 'linear-gradient(135deg,#667eea,#764ba2)' }">
+            {{ room.type === 1 ? ('私') : '组' }}
           </div>
           <div class="room-info">
             <div class="room-name">
-              <span>{{ room.name || (room.type === 1 ? '私信' : '群聊') }}</span>
+              <span>{{ roomDisplayName(room) }}</span>
               <n-badge v-if="room.unread" :value="room.unread" :max="99" />
             </div>
             <div class="room-last-msg">{{ formatLastMsg(room) }}</div>
           </div>
+          <span class="room-delete-btn" title="删除会话" @click.stop="confirmDelete(room)">×</span>
         </div>
       </div>
     </div>
@@ -32,8 +37,9 @@
     <div class="chat-main">
       <template v-if="selectedRoomId">
         <div class="chat-topbar">
-          <h3>{{ currentRoom?.name || '聊天' }}</h3>
+          <h3>{{ roomDisplayName(currentRoom) }}</h3>
           <n-tag v-if="currentRoom?.type === 2" size="small" round type="info">群聊</n-tag>
+          <n-tag v-else-if="currentRoom?.type === 1" size="small" round type="success">私信</n-tag>
         </div>
         <div ref="msgListRef" class="msg-list" @scroll="onScroll">
           <div v-for="(msg, idx) in chatStore.messages" :key="msg.id">
@@ -84,24 +90,40 @@
     <n-modal :show="!!previewSrc" @update:show="previewSrc = ''" style="width:auto;max-width:90vw">
       <img :src="previewSrc" style="max-width:80vw;max-height:80vh;border-radius:8px" />
     </n-modal>
+
+    <!-- 删除确认弹窗 -->
+    <n-modal :show="!!deleteTarget" @update:show="deleteTarget = null">
+      <div class="delete-dialog">
+        <div class="delete-dialog-icon">🗑️</div>
+        <h3 class="delete-dialog-title">删除会话</h3>
+        <p class="delete-dialog-desc">确定要删除「{{ deleteTarget?.name || '私信' }}」吗？<br>删除后该会话将从你的列表中移除。</p>
+        <div class="delete-dialog-actions">
+          <button class="dlg-btn cancel" @click="deleteTarget = null">取消</button>
+          <button class="dlg-btn confirm" @click="doDeleteRoom">确认删除</button>
+        </div>
+      </div>
+    </n-modal>
   </div>
 </template>
 
 <script setup>
 import { ref, computed, nextTick, onMounted, onUnmounted, watch } from 'vue'
-import { NInput, NButton, NBadge, NTag, NModal } from 'naive-ui'
+import { NInput, NButton, NBadge, NTag, NModal, useMessage } from 'naive-ui'
 import dayjs from 'dayjs'
 import { useChatStore } from '@/stores/chat'
 import { useUserStore } from '@/stores/user'
+import { leaveRoom } from '@/api/chat'
 import request from '@/api/request'
 
 const chatStore = useChatStore()
 const userStore = useUserStore()
+const msg = useMessage()
 
 const selectedRoomId = ref(null)
 const inputMsg = ref('')
 const msgListRef = ref(null)
 const previewSrc = ref('')
+const deleteTarget = ref(null)
 
 const currentRoom = computed(() => chatStore.rooms.find(r => r.id === selectedRoomId.value))
 const isSelf = (msg) => (msg.sender?.id ?? msg.sender_id) === userStore.info?.id
@@ -109,6 +131,17 @@ const isSelf = (msg) => (msg.sender?.id ?? msg.sender_id) === userStore.info?.id
 function isImageUrl(str) {
   if (!str) return false
   return /\.(png|jpe?g|gif|webp|bmp|svg)(\?.*)?$/i.test(str) || str.startsWith('/uploads/images/')
+}
+
+// 智能显示房间名称
+function roomDisplayName(room) {
+  if (!room) return '聊天'
+  if (room.type === 1) {
+    // 私聊：显示对方昵称
+    return room.other_nickname || '私信'
+  }
+  // 群聊：优先显示活动标题，其次显示房间名
+  return room.activity_title || room.name || '群聊'
 }
 
 function formatLastMsg(room) {
@@ -174,6 +207,28 @@ const stopWatch = watch(() => chatStore.messages.length, () => scrollToBottom())
 
 onMounted(() => chatStore.loadRooms())
 onUnmounted(() => stopWatch())
+
+// 删除会话
+function confirmDelete(room) {
+  deleteTarget.value = room
+}
+
+async function doDeleteRoom() {
+  const room = deleteTarget.value
+  if (!room) return
+  deleteTarget.value = null
+  try {
+    await leaveRoom(room.id)
+    chatStore.rooms = chatStore.rooms.filter(r => r.id !== room.id)
+    if (selectedRoomId.value === room.id) {
+      selectedRoomId.value = null
+      chatStore.messages = []
+    }
+    msg.success('会话已删除')
+  } catch (e) {
+    msg.error('删除失败')
+  }
+}
 </script>
 
 <style scoped>
@@ -228,6 +283,13 @@ onUnmounted(() => stopWatch())
   display: flex; align-items: center; justify-content: center;
   font-size: 16px; color: #fff; font-weight: 600; flex-shrink: 0;
 }
+.room-avatar-img {
+  width: 40px; height: 40px; border-radius: 50%;
+  overflow: hidden; flex-shrink: 0;
+}
+.room-avatar-img img {
+  width: 100%; height: 100%; object-fit: cover;
+}
 .room-info { flex: 1; min-width: 0; }
 .room-name {
   display: flex; align-items: center; justify-content: space-between;
@@ -237,6 +299,22 @@ onUnmounted(() => stopWatch())
   font-size: 12px; color: #999; margin-top: 2px;
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
+.room-delete-btn {
+  display: none;
+  width: 20px; height: 20px;
+  border-radius: 50%;
+  background: #e5e5e5;
+  color: #666;
+  font-size: 14px; font-weight: 700;
+  align-items: center; justify-content: center;
+  flex-shrink: 0;
+  cursor: pointer;
+  transition: all .2s;
+  line-height: 20px;
+  text-align: center;
+}
+.room-item:hover .room-delete-btn { display: flex; }
+.room-delete-btn:hover { background: #ff4d4f; color: #fff; }
 
 /* === 聊天主区 === */
 .chat-main {
@@ -351,4 +429,66 @@ onUnmounted(() => stopWatch())
 .empty-icon { font-size: 48px; margin-bottom: 12px; }
 .chat-empty h3 { margin: 0; font-size: 16px; color: #999; }
 .chat-empty p { margin: 4px 0 0; font-size: 13px; }
+
+/* 删除确认弹窗 */
+.delete-dialog {
+  background: #fff;
+  border-radius: 16px;
+  padding: 32px 28px 24px;
+  text-align: center;
+  max-width: 340px;
+  margin: 0 auto;
+  box-shadow: 0 20px 60px rgba(0,0,0,.15);
+  animation: dlg-in .25s ease;
+}
+@keyframes dlg-in {
+  from { opacity: 0; transform: scale(.9) translateY(10px); }
+  to { opacity: 1; transform: scale(1) translateY(0); }
+}
+.delete-dialog-icon {
+  font-size: 42px;
+  margin-bottom: 8px;
+}
+.delete-dialog-title {
+  margin: 0 0 8px;
+  font-size: 18px;
+  font-weight: 700;
+  color: #1a1a2e;
+}
+.delete-dialog-desc {
+  margin: 0 0 24px;
+  font-size: 13px;
+  color: #888;
+  line-height: 1.7;
+}
+.delete-dialog-actions {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+}
+.dlg-btn {
+  padding: 9px 28px;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  border: none;
+  transition: all .2s;
+}
+.dlg-btn.cancel {
+  background: #f5f5f5;
+  color: #666;
+}
+.dlg-btn.cancel:hover {
+  background: #e8e8e8;
+}
+.dlg-btn.confirm {
+  background: linear-gradient(135deg, #ff4d4f, #e03e3e);
+  color: #fff;
+  box-shadow: 0 4px 14px rgba(255, 77, 79, .3);
+}
+.dlg-btn.confirm:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 20px rgba(255, 77, 79, .4);
+}
 </style>

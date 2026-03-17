@@ -16,3 +16,12 @@ export const applyActivity   = (id, data) => request.post(`/activities/${id}/app
 export const reviewMember    = (data)   => request.post('/activities/review-member', data)
 // 获取我参加的所有活动
 export const myActivities    = ()       => request.get('/activities/me/list')
+
+// ===== 活动评价 =====
+// 提交活动互评
+export const submitReview      = (data)       => request.post('/reviews', data)
+// 获取某活动的所有评价
+export const getActivityReviews = (activityId) => request.get(`/reviews/activity/${activityId}`)
+// 获取某用户收到的所有评价（含平均分）
+export const getUserReviews    = (userId)     => request.get(`/reviews/user/${userId}`)
+

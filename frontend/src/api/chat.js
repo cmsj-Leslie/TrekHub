@@ -13,3 +13,5 @@ export const createPrivateRoom  = (targetUserId) => request.post('/chat/rooms/pr
 export const getMessages        = (roomId, params) => request.get(`/chat/rooms/${roomId}/messages`, { params })
 // 获取聊天室成员列表
 export const getRoomMembers     = (roomId)      => request.get(`/chat/rooms/${roomId}/members`)
+// 删除/退出会话
+export const leaveRoom          = (roomId)      => request.delete(`/chat/rooms/${roomId}`)

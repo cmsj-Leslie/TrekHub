@@ -86,6 +86,31 @@
       <n-tab-pane name="checkins" tab="📍 打卡记录">
         <CheckinTimeline :user-id="userId" />
       </n-tab-pane>
+      <n-tab-pane name="reviews" tab="⭐ 收到的评价">
+        <n-spin :show="reviewsLoading">
+          <div v-if="userReviews.avgRating" class="review-summary">
+            <span class="review-avg">🌟 {{ userReviews.avgRating }}</span>
+            <span class="review-total">共 {{ userReviews.total }} 条评价</span>
+          </div>
+          <div v-for="r in userReviews.list" :key="r.id" class="user-review-card">
+            <div class="user-review-header">
+              <img v-if="r.reviewer?.avatar" :src="r.reviewer.avatar" class="user-review-avatar" @click="router.push(`/profile/${r.reviewer.id}`)" />
+              <div v-else class="follow-avatar-fallback" :style="{ background: avatarColor(r.reviewer?.id) }" @click="router.push(`/profile/${r.reviewer.id}`)">
+                {{ r.reviewer?.nickname?.[0] || '?' }}
+              </div>
+              <div class="user-review-info">
+                <span class="user-review-name" @click="router.push(`/profile/${r.reviewer.id}`)">{{ r.reviewer?.nickname }}</span>
+                <n-rate :value="r.rating" readonly size="small" />
+              </div>
+            </div>
+            <div v-if="r.content" class="user-review-content">{{ r.content }}</div>
+            <div class="user-review-activity" v-if="r.activity">
+              <router-link :to="`/activities/${r.activity.id}`" class="route-link-mini">📍 {{ r.activity.title }}</router-link>
+            </div>
+          </div>
+          <n-empty v-if="!reviewsLoading && !userReviews.list?.length" description="暂无评价" style="margin-top:40px" />
+        </n-spin>
+      </n-tab-pane>
     </n-tabs>
 
     <!-- 关注/粉丝列表弹窗 -->
@@ -118,9 +143,10 @@
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { NAvatar, NTag, NTabs, NTabPane, NGrid, NGridItem, NButton, NEmpty, NModal, NSpin, useMessage } from 'naive-ui'
+import { NAvatar, NTag, NTabs, NTabPane, NGrid, NGridItem, NButton, NEmpty, NModal, NSpin, NRate, useMessage } from 'naive-ui'
 import { getProfile, getUserSkills, toggleFollow, getFollowInfo, getFollowers, getFollowing } from '@/api/user'
 import { createPrivateRoom } from '@/api/chat'
+import { getUserReviews } from '@/api/activity'
 import { useUserStore } from '@/stores/user'
 import RouteCard from '@/components/RouteCard.vue'
 import CheckinTimeline from '@/components/CheckinTimeline.vue'
@@ -134,6 +160,9 @@ const userId = computed(() => +vueRoute.params.id)
 const user = ref(null)
 const skills = ref([])
 const followInfo = ref({ followerCount: 0, followingCount: 0, isFollowed: false })
+
+const userReviews = ref({ avgRating: null, total: 0, list: [] })
+const reviewsLoading = ref(false)
 
 const isSelf = computed(() => userStore.info?.id === userId.value)
 
@@ -172,6 +201,17 @@ async function loadProfileData() {
   user.value   = profileRes.data
   skills.value = skillRes.data
   followInfo.value = followRes.data
+  // 加载用户收到的评价
+  loadUserReviews(id)
+}
+
+async function loadUserReviews(id) {
+  reviewsLoading.value = true
+  try {
+    const res = await getUserReviews(id)
+    userReviews.value = res.data
+  } catch (e) { /* 忽略 */ }
+  finally { reviewsLoading.value = false }
 }
 
 onMounted(loadProfileData)
@@ -362,4 +402,41 @@ async function startChat() {
   color: #fff; font-size: 18px; font-weight: 700;
   box-shadow: 0 2px 8px rgba(0,0,0,.1);
 }
+
+/* === 用户评价 === */
+.review-summary {
+  display: flex; align-items: center; gap: 12px;
+  margin: 12px 0 16px; padding: 12px 16px;
+  background: linear-gradient(135deg, #fef9c3, #fef3c7);
+  border-radius: 10px;
+}
+.review-avg { font-size: 22px; font-weight: 700; color: #f59e0b; }
+.review-total { font-size: 13px; color: #92400e; }
+.user-review-card {
+  padding: 14px; background: #fff; border: 1px solid #f0f0f0;
+  border-radius: 10px; margin-bottom: 10px;
+  transition: box-shadow .2s;
+}
+.user-review-card:hover { box-shadow: 0 2px 12px rgba(0,0,0,.06); }
+.user-review-header { display: flex; align-items: center; gap: 10px; }
+.user-review-avatar {
+  width: 36px; height: 36px; border-radius: 50%; object-fit: cover;
+  cursor: pointer; flex-shrink: 0;
+}
+.user-review-info { display: flex; align-items: center; gap: 8px; flex: 1; }
+.user-review-name {
+  font-weight: 600; font-size: 14px; color: #333; cursor: pointer;
+}
+.user-review-name:hover { color: #2d8cf0; }
+.user-review-content {
+  margin-top: 8px; font-size: 13px; color: #555; line-height: 1.6;
+  padding-left: 46px;
+}
+.user-review-activity {
+  margin-top: 6px; padding-left: 46px;
+}
+.route-link-mini {
+  font-size: 12px; color: #2d8cf0; text-decoration: none;
+}
+.route-link-mini:hover { text-decoration: underline; }
 </style>

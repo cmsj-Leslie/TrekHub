@@ -6,14 +6,19 @@ const { ChatRoom, Message, User, sequelize } = require('../models')
 const { Op } = require('sequelize')
 const { success, created, fail, notFound, forbidden } = require('../utils/response')
 
-// 获取当前用户所有聊天室（含最新一条消息和未读数）
+// 获取当前用户所有聊天室（含最新一条消息、未读数、对方用户信息/活动信息）
 exports.myRooms = async (req, res) => {
   const rooms = await sequelize.query(`
     SELECT cr.*, m.content as last_msg, m.created_at as last_msg_time,
-           (SELECT COUNT(*) FROM messages WHERE room_id = cr.id AND is_read = 0 AND sender_id != :uid) as unread
+           (SELECT COUNT(*) FROM messages WHERE room_id = cr.id AND is_read = 0 AND sender_id != :uid) as unread,
+           a.title as activity_title,
+           ou.id as other_user_id, ou.nickname as other_nickname, ou.avatar as other_avatar
     FROM chat_rooms cr
     JOIN room_members rm ON rm.room_id = cr.id AND rm.user_id = :uid
     LEFT JOIN messages m ON m.id = (SELECT MAX(id) FROM messages WHERE room_id = cr.id)
+    LEFT JOIN activities a ON cr.type = 2 AND a.id = cr.activity_id
+    LEFT JOIN room_members rm2 ON cr.type = 1 AND rm2.room_id = cr.id AND rm2.user_id != :uid
+    LEFT JOIN users ou ON ou.id = rm2.user_id
     ORDER BY last_msg_time DESC
   `, { replacements: { uid: req.user.id }, type: sequelize.QueryTypes.SELECT })
   success(res, rooms)
@@ -70,3 +75,14 @@ exports.getRoomMembers = async (req, res) => {
   `, { replacements: [req.params.roomId], type: sequelize.QueryTypes.SELECT })
   success(res, members)
 }
+
+// 退出/删除会话（仅移除当前用户的成员记录，不影响其他人）
+exports.leaveRoom = async (req, res) => {
+  const { roomId } = req.params
+  await sequelize.query(
+    'DELETE FROM room_members WHERE room_id = ? AND user_id = ?',
+    { replacements: [roomId, req.user.id] }
+  )
+  success(res, null, '已删除会话')
+}
+

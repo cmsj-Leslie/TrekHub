@@ -52,16 +52,20 @@
           </div>
         </div>
 
-        <!-- 安全提示 -->
-        <div class="info-card warning-card" v-if="activity.safety_info">
-          <h3>⚠️ 安全提示</h3>
-          <p>{{ activity.safety_info }}</p>
-        </div>
-
-        <!-- 必备装备 -->
-        <div class="info-card" v-if="activity.gear_require">
-          <h3>🎒 必备装备</h3>
-          <p>{{ activity.gear_require }}</p>
+        <!-- 安全警告横幅（醒目增强） -->
+        <div class="safety-banner" v-if="activity.safety_info || activity.gear_require">
+          <div class="safety-banner-header">
+            <span class="safety-icon-pulse">⚠️</span>
+            <span class="safety-banner-title">安全警告 · 出行前请仔细阅读</span>
+          </div>
+          <div v-if="activity.safety_info" class="safety-banner-body">
+            <div class="safety-label">🚨 注意事项</div>
+            <div class="safety-text">{{ activity.safety_info }}</div>
+          </div>
+          <div v-if="activity.gear_require" class="safety-banner-body" style="border-top:1px dashed #fde68a">
+            <div class="safety-label">🎒 必备装备</div>
+            <div class="safety-text">{{ activity.gear_require }}</div>
+          </div>
         </div>
 
         <!-- 活动描述 -->
@@ -94,6 +98,49 @@
         <div class="info-card">
           <h3>💬 讨论区</h3>
           <CommentList :target-type="2" :target-id="activity.id" />
+        </div>
+
+        <!-- 活动互评（仅活动已结束时展示） -->
+        <div class="info-card" v-if="activity.status === 3">
+          <h3>⭐ 活动互评</h3>
+
+          <!-- 评价表单：仅已通过的成员且活动已结束 -->
+          <div v-if="isApproved && reviewableMembers.length" class="review-section">
+            <div v-for="m in reviewableMembers" :key="m.user?.id" class="review-form-item">
+              <div class="review-target">
+                <img v-if="m.user?.avatar" :src="m.user.avatar" class="member-img" />
+                <span v-else class="member-fallback">{{ m.user?.nickname?.[0] }}</span>
+                <span class="review-target-name">{{ m.user?.nickname }}</span>
+                <n-rate v-if="!myReviewedIds.has(m.user?.id)" v-model:value="reviewForms[m.user?.id].rating" size="small" />
+                <span v-else class="reviewed-tag">✓ 已评价</span>
+              </div>
+              <template v-if="!myReviewedIds.has(m.user?.id)">
+                <n-input v-model:value="reviewForms[m.user?.id].content" placeholder="写一句评价（选填）" size="small" />
+                <n-button size="small" type="primary" round :loading="reviewSubmitting" style="margin-top:6px;align-self:flex-end"
+                  @click="doSubmitReview(m.user?.id)">提交评价</n-button>
+              </template>
+            </div>
+          </div>
+          <div v-else-if="isApproved" style="color:#999;font-size:13px">没有其他成员可评价</div>
+          <div v-else-if="userStore.isLoggedIn" style="color:#999;font-size:13px">仅活动成员可参与互评</div>
+
+          <!-- 已有评价列表 -->
+          <div v-if="activityReviews.length" style="margin-top:16px">
+            <div class="review-divider">已有评价（{{ activityReviews.length }}）</div>
+            <div v-for="r in activityReviews" :key="r.id" class="review-card">
+              <div class="review-card-header">
+                <img v-if="r.reviewer?.avatar" :src="r.reviewer.avatar" class="member-img" />
+                <span v-else class="member-fallback">{{ r.reviewer?.nickname?.[0] }}</span>
+                <span class="review-card-name">{{ r.reviewer?.nickname }}</span>
+                <span class="review-arrow">→</span>
+                <img v-if="r.reviewee?.avatar" :src="r.reviewee.avatar" class="member-img" />
+                <span v-else class="member-fallback">{{ r.reviewee?.nickname?.[0] }}</span>
+                <span class="review-card-name">{{ r.reviewee?.nickname }}</span>
+                <n-rate :value="r.rating" readonly size="small" style="margin-left:auto" />
+              </div>
+              <div v-if="r.content" class="review-card-content">{{ r.content }}</div>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -140,11 +187,11 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, reactive, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { NButton, NCard, NModal, NInput, NSpace, useMessage } from 'naive-ui'
+import { NButton, NCard, NModal, NInput, NSpace, NRate, useMessage } from 'naive-ui'
 import dayjs from 'dayjs'
-import { getActivity, applyActivity, reviewMember } from '@/api/activity'
+import { getActivity, applyActivity, reviewMember, submitReview, getActivityReviews } from '@/api/activity'
 import { useUserStore } from '@/stores/user'
 import CommentList from '@/components/CommentList.vue'
 
@@ -158,6 +205,12 @@ const showApply = ref(false)
 const applyMsg = ref('')
 const applying = ref(false)
 
+// 活动互评相关
+const activityReviews = ref([])
+const myReviewedIds = reactive(new Set())  // 当前用户已评价过的成员 ID 集合
+const reviewForms = reactive({})           // { userId: { rating: 0, content: '' } }
+const reviewSubmitting = ref(false)
+
 const isOrganizer = computed(() => activity.value?.organizer_id === userStore.info?.id)
 const approvedMembers = computed(() => activity.value?.members?.filter(m => m.status === 1) || [])
 const pendingMembers  = computed(() => activity.value?.members?.filter(m => m.status === 0) || [])
@@ -170,6 +223,10 @@ const canChat = computed(() => {
   if (!activity.value?.chatRoomId) return false
   return isOrganizer.value || isApproved.value
 })
+// 可评价的成员（排除自己）
+const reviewableMembers = computed(() =>
+  approvedMembers.value.filter(m => m.user?.id !== userStore.info?.id)
+)
 const fillWidth = computed(() => {
   if (!activity.value) return '0%'
   return Math.min((activity.value.current_members / activity.value.max_members) * 100, 100) + '%'
@@ -181,6 +238,49 @@ const statusLabel = (s) => ['已取消', '招募中', '已满员', '已结束'][
 async function load() {
   const res = await getActivity(vueRoute.params.id)
   activity.value = res.data
+  // 如果活动已结束，加载评价数据
+  if (res.data.status === 3) {
+    await loadReviews()
+  }
+}
+
+// 加载活动评价列表
+async function loadReviews() {
+  try {
+    const res = await getActivityReviews(vueRoute.params.id)
+    activityReviews.value = res.data
+    // 标记当前用户已评过的成员
+    myReviewedIds.clear()
+    res.data.forEach(r => {
+      if (r.reviewer_id === userStore.info?.id) myReviewedIds.add(r.reviewee_id)
+    })
+    // 初始化评价表单
+    reviewableMembers.value.forEach(m => {
+      if (!reviewForms[m.user?.id]) {
+        reviewForms[m.user?.id] = { rating: 5, content: '' }
+      }
+    })
+  } catch (e) { /* 忽略 */ }
+}
+
+// 提交评价
+async function doSubmitReview(revieweeId) {
+  const form = reviewForms[revieweeId]
+  if (!form?.rating) return msg.warning('请选择评分')
+  reviewSubmitting.value = true
+  try {
+    await submitReview({
+      activity_id: activity.value.id,
+      reviewee_id: revieweeId,
+      rating: form.rating,
+      content: form.content
+    })
+    msg.success('评价成功')
+    myReviewedIds.add(revieweeId)
+    await loadReviews()
+  } catch (e) {
+    msg.error(e.response?.data?.msg || '评价失败')
+  } finally { reviewSubmitting.value = false }
 }
 
 async function doApply() {
@@ -299,4 +399,79 @@ onMounted(load)
 .org-img { width: 44px; height: 44px; border-radius: 50%; object-fit: cover; }
 .org-name { font-weight: 600; font-size: 15px; color: #333; }
 .org-sub { font-size: 12px; color: #999; }
+
+/* === 安全警告横幅 === */
+.safety-banner {
+  background: linear-gradient(135deg, #fffbeb, #fef3c7);
+  border: 2px solid #f59e0b;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 2px 12px rgba(245, 158, 11, 0.15);
+  margin-bottom: 14px;
+}
+.safety-banner-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 18px;
+  background: linear-gradient(135deg, #f59e0b, #d97706);
+  color: #fff;
+  font-weight: 700;
+  font-size: 15px;
+}
+.safety-icon-pulse {
+  font-size: 20px;
+  animation: safety-pulse 1.5s ease-in-out infinite;
+}
+@keyframes safety-pulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.25); }
+}
+.safety-banner-title { letter-spacing: 0.5px; }
+.safety-banner-body { padding: 14px 18px; }
+.safety-label {
+  font-size: 13px;
+  font-weight: 700;
+  color: #92400e;
+  margin-bottom: 6px;
+}
+.safety-text {
+  font-size: 14px;
+  color: #78350f;
+  line-height: 1.8;
+  white-space: pre-wrap;
+}
+
+/* === 活动互评 === */
+.review-section { display: flex; flex-direction: column; gap: 14px; }
+.review-form-item {
+  display: flex; flex-direction: column; gap: 6px;
+  padding: 12px; background: #f8fafc; border-radius: 10px;
+  border: 1px solid #f0f0f0;
+}
+.review-target {
+  display: flex; align-items: center; gap: 8px;
+}
+.review-target-name { font-weight: 600; font-size: 14px; color: #333; margin-right: 8px; }
+.reviewed-tag {
+  font-size: 12px; color: #10b981; font-weight: 600;
+  background: #ecfdf5; padding: 2px 10px; border-radius: 12px;
+}
+.review-divider {
+  font-size: 13px; color: #999; font-weight: 500;
+  padding-bottom: 8px; border-bottom: 1px solid #f0f0f0; margin-bottom: 10px;
+}
+.review-card {
+  padding: 12px; background: #fafbfc; border-radius: 10px;
+  border: 1px solid #f0f0f0; margin-bottom: 8px;
+}
+.review-card-header {
+  display: flex; align-items: center; gap: 6px; flex-wrap: wrap;
+}
+.review-card-name { font-weight: 600; font-size: 13px; color: #333; }
+.review-arrow { color: #ccc; font-size: 14px; }
+.review-card-content {
+  margin-top: 8px; font-size: 13px; color: #555; line-height: 1.6;
+  padding-left: 40px;
+}
 </style>

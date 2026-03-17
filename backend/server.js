@@ -39,6 +39,7 @@ app.use('/api/checkins',   require('./src/routes/checkins'))   // 打卡
 app.use('/api/ai',         require('./src/routes/ai'))         // AI 助手
 app.use('/api/match',      require('./src/routes/match'))      // 随机组队
 app.use('/api/admin',      require('./src/routes/admin'))      // 后台管理
+app.use('/api/reviews',    require('./src/routes/reviews'))    // 活动评价
 app.use('/api/docs',       require('./src/routes/docs'))       // API 文档
 
 // ========== WebSocket 实时通信 ==========

@@ -107,7 +107,7 @@ TrekHub/
 │  Sequelize ORM  │  Socket.IO Server  │  node-cron 定时任务 │
 ├─────────────────┴────────────────────┴────────────────────┤
 │                       MySQL 数据库                         │
-│             12 张核心表 + 关联关系                          │
+│             18 张核心表 + 关联关系                          │
 └───────────────────────────────────────────────────────────┘
 ```
 
@@ -133,11 +133,16 @@ TrekHub/
 | `activity_members` | 活动成员 | activity_id, user_id, status, role |
 | `chat_rooms` | 聊天室 | id, name, type(1私信/2群聊), activity_id |
 | `chat_messages` | 聊天消息 | id, room_id, sender_id, content, type(1文字/2图片) |
-| `comments` | 评论表 | id, target_type, target_id, user_id, content, parent_id |
-| `favorites` | 收藏表 | user_id, route_id |
+| `comments` | 评论表 | id, target_type, target_id, user_id, content, images, rating |
+| `comment_likes` | 评论点赞 | user_id, comment_id |
+| `favorites` | 收藏表 | user_id, target_type, target_id |
 | `checkins` | 打卡记录 | id, user_id, content, images, distance |
 | `user_follows` | 关注关系 | follower_id, following_id |
+| `user_skills` | 用户技能关联 | user_id, tag_id |
 | `skill_tags` | 技能标签 | id, name |
+| `ai_sessions` | AI对话会话 | id, user_id, session_type, messages |
+| `match_pool` | 随机组队匹配池 | id, user_id, route_id, prefer_date, status |
+| `activity_reviews` | 活动互评 | id, activity_id, reviewer_id, reviewee_id, rating, content |
 
 ---
 
@@ -156,12 +161,15 @@ TrekHub/
 - 创建/编辑线路（支持 GPX 文件上传解析）
 - AI 智能线路推荐（基于用户画像）
 - 线路收藏与评论
+- 线路分享（Web Share API / 链接复制）
+- 安全提示与装备信息醒目警告展示
 
 ### 3. 活动模块
 - 发布徒步活动（关联线路、安全信息必填）
 - 报名申请 + 组织者审批
 - 活动状态自动更新（招募中→已满→已结束）
 - 审批通过自动进入活动群聊
+- 活动结束后参与者互评（评分 + 评语）
 - 我的活动列表
 
 ### 4. 实时聊天
@@ -169,6 +177,8 @@ TrekHub/
 - 基于 Socket.IO 的 WebSocket 双向实时通信
 - 支持文字和图片消息
 - 未读消息计数
+- 会话删除管理
+- 智能显示会话名称（私聊显示对方昵称、群聊显示活动标题）
 - 聊天记录分页加载
 
 ### 5. AI 智能助手
@@ -192,6 +202,18 @@ TrekHub/
 - 用户管理（角色分配）
 - 线路内容审核
 - 评论管理
+
+### 10. 评论系统
+- 支持线路和活动的多目标评论
+- 评论图片上传（最多3张）
+- 评分星级（线路评价）
+- 评论点赞/取消点赞
+- 评论回复
+
+### 11. 用户评价
+- 活动结束后成员互评
+- 用户主页「收到的评价」展示
+- 平均评分统计
 
 ### 9. RESTful API 文档
 - 后端自渲染 HTML 文档页

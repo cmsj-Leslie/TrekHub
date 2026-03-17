@@ -2,6 +2,7 @@
   <n-config-provider :theme="null">
     <n-message-provider>
       <n-notification-provider>
+        <n-dialog-provider>
         <n-layout style="min-height:100vh;display:flex;flex-direction:column">
           <!-- 导航栏 -->
           <n-layout-header bordered class="nav-header">
@@ -52,6 +53,7 @@
             <div style="margin-top:8px">© 2026 TrekHub · 基于 Vue.js 的徒步旅行线路规划与同伴组队平台</div>
           </footer>
         </n-layout>
+        </n-dialog-provider>
       </n-notification-provider>
     </n-message-provider>
   </n-config-provider>
@@ -61,7 +63,7 @@
 import { computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import {
-  NConfigProvider, NMessageProvider, NNotificationProvider,
+  NConfigProvider, NMessageProvider, NNotificationProvider, NDialogProvider,
   NLayout, NLayoutHeader, NLayoutContent,
   NSpace, NButton, NBadge, NAvatar, NDropdown
 } from 'naive-ui'

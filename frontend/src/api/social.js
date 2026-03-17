@@ -15,6 +15,12 @@ export const removeComment  = (id)     => request.delete(`/comments/${id}`)
 export const likeComment    = (id)     => request.post(`/comments/${id}/like`)
 // 批量检查评论点赞状态
 export const checkCommentLikes = (ids) => request.get('/comments/check-likes', { params: { ids: ids.join(',') } })
+// 上传评论图片
+export const uploadCommentImage = (file) => {
+  const fd = new FormData()
+  fd.append('image', file)
+  return request.post('/comments/upload-image', fd)
+}
 
 // ===== 收藏 =====
 // 收藏或取消收藏

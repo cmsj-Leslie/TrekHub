@@ -5,8 +5,9 @@
       <template #extra>
         <n-space>
           <n-button :type="favorited ? 'error' : 'default'" @click="toggle">
-            {{ favorited ? '❤️ 已收藏' : '🤍 收藏' }}
+            {{ favorited ? '❤️ 已收藏' : '🩶 收藏' }}
           </n-button>
+          <n-button @click="shareRoute">📤 分享</n-button>
           <router-link :to="`/activities/create?routeId=${route.id}`">
             <n-button type="primary">基于此线路发起活动</n-button>
           </router-link>
@@ -94,16 +95,21 @@
       <div style="line-height:1.8;white-space:pre-wrap">{{ route.description }}</div>
     </n-card>
 
-    <!-- 安全提示 -->
-    <div v-if="route.safety_note" class="safety-card" style="margin-top:16px">
-      <div class="safety-header">⚠️ 安全提示</div>
-      <div class="safety-body">{{ route.safety_note }}</div>
+    <!-- 安全提示（醒目警告横幅） -->
+    <div v-if="route.safety_note || route.gear_list" class="safety-banner" style="margin-top:16px">
+      <div class="safety-banner-header">
+        <span class="safety-icon-pulse">⚠️</span>
+        <span class="safety-banner-title">安全警告 · 出行前请仔细阅读</span>
+      </div>
+      <div v-if="route.safety_note" class="safety-banner-body">
+        <div class="safety-label">🚨 注意事项</div>
+        <div class="safety-text">{{ route.safety_note }}</div>
+      </div>
+      <div v-if="route.gear_list" class="safety-banner-body" style="border-top:1px dashed #fde68a">
+        <div class="safety-label">🎒 必备装备</div>
+        <div class="safety-text">{{ route.gear_list }}</div>
+      </div>
     </div>
-
-    <!-- 建议装备 -->
-    <n-card v-if="route.gear_list" title="🎒 建议装备" style="margin-top:16px">
-      <div style="line-height:1.8">{{ route.gear_list }}</div>
-    </n-card>
 
     <!-- 评论 -->
     <n-card title="评价与讨论" style="margin-top:16px">
@@ -117,13 +123,14 @@
 import { ref, computed, onMounted, nextTick } from 'vue'
 import { useRoute } from 'vue-router'
 import {
-  NPageHeader, NTag, NAvatar, NCard, NButton, NSpace, NSpin, NDivider
+  NPageHeader, NTag, NAvatar, NCard, NButton, NSpace, NSpin, NDivider, useMessage
 } from 'naive-ui'
 import { getRoute } from '@/api/route'
 import { useFavorite } from '@/composables/useFavorite'
 import { useMap } from '@/composables/useMap'
 import CommentList from '@/components/CommentList.vue'
 
+const msg = useMessage()
 const vueRoute = useRoute()
 const route = ref(null)
 const elevCanvas = ref(null)
@@ -260,6 +267,26 @@ onMounted(async () => {
     drawElevationProfile()
   }
 })
+
+// 分享线路
+async function shareRoute() {
+  const url = window.location.href
+  const title = `TrekHub 线路：${route.value.title}`
+  // 尝试使用系统原生分享
+  if (navigator.share) {
+    try {
+      await navigator.share({ title, url })
+      return
+    } catch { /* 用户取消或不支持，回退到复制 */ }
+  }
+  // 回退：复制链接到剪贴板
+  try {
+    await navigator.clipboard.writeText(url)
+    msg.success('线路链接已复制到剪贴板')
+  } catch {
+    msg.info(url)
+  }
+}
 </script>
 
 <style scoped>
@@ -313,24 +340,41 @@ onMounted(async () => {
   font-size: 13px; color: #666;
 }
 
-/* 安全提示卡片 */
-.safety-card {
-  background: #fffbf0;
-  border: 1px solid #fde68a;
-  border-left: 4px solid #f59e0b;
-  border-radius: 10px;
+/* 安全警告横幅（增强版） */
+.safety-banner {
+  background: linear-gradient(135deg, #fffbeb, #fef3c7);
+  border: 2px solid #f59e0b;
+  border-radius: 12px;
   overflow: hidden;
+  box-shadow: 0 2px 12px rgba(245, 158, 11, 0.15);
 }
-.safety-header {
-  padding: 12px 16px;
+.safety-banner-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 18px;
+  background: linear-gradient(135deg, #f59e0b, #d97706);
+  color: #fff;
+  font-weight: 700;
   font-size: 15px;
+}
+.safety-icon-pulse {
+  font-size: 20px;
+  animation: safety-pulse 1.5s ease-in-out infinite;
+}
+@keyframes safety-pulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.25); }
+}
+.safety-banner-title { letter-spacing: 0.5px; }
+.safety-banner-body { padding: 14px 18px; }
+.safety-label {
+  font-size: 13px;
   font-weight: 700;
   color: #92400e;
-  background: rgba(245, 158, 11, .08);
-  border-bottom: 1px solid #fde68a;
+  margin-bottom: 6px;
 }
-.safety-body {
-  padding: 14px 16px;
+.safety-text {
   font-size: 14px;
   color: #78350f;
   line-height: 1.8;

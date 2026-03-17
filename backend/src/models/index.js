@@ -15,6 +15,7 @@ const Favorite = require('./Favorite')
 const Checkin = require('./Checkin')
 const AiSession = require('./AiSession')
 const MatchPool = require('./MatchPool')
+const ActivityReview = require('./ActivityReview')
 
 // ===== 关联关系定义 =====
 
@@ -63,8 +64,14 @@ User.hasMany(AiSession, { foreignKey: 'user_id', as: 'aiSessions' })
 User.hasOne(MatchPool, { foreignKey: 'user_id' })
 MatchPool.belongsTo(User, { foreignKey: 'user_id', as: 'user' })
 
+// 活动评价关联（评价者、被评价者、所属活动）
+ActivityReview.belongsTo(User, { foreignKey: 'reviewer_id', as: 'reviewer' })
+ActivityReview.belongsTo(User, { foreignKey: 'reviewee_id', as: 'reviewee' })
+ActivityReview.belongsTo(Activity, { foreignKey: 'activity_id', as: 'activity' })
+Activity.hasMany(ActivityReview, { foreignKey: 'activity_id', as: 'reviews' })
+
 // 统一导出所有模型
 module.exports = {
   sequelize, User, Route, RoutePoint, Activity, ActivityMember,
-  ChatRoom, Message, Comment, Favorite, Checkin, AiSession, MatchPool
+  ChatRoom, Message, Comment, Favorite, Checkin, AiSession, MatchPool, ActivityReview
 }

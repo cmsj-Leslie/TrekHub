@@ -4,6 +4,21 @@
     <n-space v-if="userStore.isLoggedIn" vertical style="margin-bottom:16px">
       <n-rate v-if="targetType === 1" v-model:value="form.rating" />
       <n-input v-model:value="form.content" type="textarea" placeholder="写下你的评价..." :rows="3" />
+      <!-- 图片上传 -->
+      <div class="upload-area">
+        <div class="img-preview-list">
+          <div v-for="(img, idx) in form.images" :key="idx" class="img-preview-item">
+            <img :src="img" />
+            <span class="img-remove" @click="form.images.splice(idx, 1)">×</span>
+          </div>
+          <label v-if="form.images.length < 3" class="img-add-btn">
+            <input type="file" accept="image/*" style="display:none" @change="handleImageUpload" />
+            <span>📷</span>
+            <span style="font-size:11px">添加图片</span>
+          </label>
+        </div>
+        <span v-if="uploading" style="font-size:12px;color:#999">上传中...</span>
+      </div>
       <n-button type="primary" :loading="submitting" @click="submit">发布评论</n-button>
     </n-space>
 
@@ -65,7 +80,7 @@
 import { ref, reactive, onMounted } from 'vue'
 import { NSpace, NAvatar, NInput, NButton, NDivider, NSpin, NRate, useMessage } from 'naive-ui'
 import { smartTime } from '@/utils/timeUtils'
-import { getComments, createComment, removeComment, likeComment as apiLike, checkCommentLikes } from '@/api/social'
+import { getComments, createComment, removeComment, likeComment as apiLike, checkCommentLikes, uploadCommentImage } from '@/api/social'
 import { useUserStore } from '@/stores/user'
 
 const props = defineProps({
@@ -80,7 +95,8 @@ const total = ref(0)
 const page = ref(1)
 const loading = ref(false)
 const submitting = ref(false)
-const form = ref({ content: '', rating: 0 })
+const form = ref({ content: '', rating: 0, images: [] })
+const uploading = ref(false)
 const replyTo = ref(null)
 const replyContent = ref('')
 const likedSet = reactive(new Set())
@@ -107,11 +123,33 @@ async function submit() {
   if (!form.value.content.trim()) return msg.warning('评论内容不能为空')
   submitting.value = true
   try {
-    await createComment({ target_type: props.targetType, target_id: props.targetId, ...form.value })
-    form.value = { content: '', rating: 0 }
+    const payload = {
+      target_type: props.targetType,
+      target_id: props.targetId,
+      content: form.value.content,
+      rating: form.value.rating || undefined,
+      images: form.value.images.length ? form.value.images : undefined
+    }
+    await createComment(payload)
+    form.value = { content: '', rating: 0, images: [] }
     msg.success('评论发布成功')
     load(true)
   } finally { submitting.value = false }
+}
+
+// 处理图片上传
+async function handleImageUpload(e) {
+  const file = e.target.files?.[0]
+  if (!file) return
+  e.target.value = '' // 重置 input 以允许重复选择同一文件
+  if (form.value.images.length >= 3) return msg.warning('最多上传 3 张图片')
+  uploading.value = true
+  try {
+    const res = await uploadCommentImage(file)
+    form.value.images.push(res.data.url)
+  } catch (err) {
+    msg.error('图片上传失败')
+  } finally { uploading.value = false }
 }
 
 async function submitReply(parentId) {
@@ -168,4 +206,36 @@ onMounted(() => load(true))
 .like-btn:active {
   transform: scale(1.15);
 }
+
+/* 图片上传区域 */
+.upload-area {
+  display: flex; align-items: center; gap: 8px;
+}
+.img-preview-list {
+  display: flex; gap: 8px; flex-wrap: wrap;
+}
+.img-preview-item {
+  position: relative; width: 64px; height: 64px;
+  border-radius: 6px; overflow: hidden;
+  border: 1px solid #e0e0e0;
+}
+.img-preview-item img {
+  width: 100%; height: 100%; object-fit: cover;
+}
+.img-remove {
+  position: absolute; top: 2px; right: 2px;
+  width: 18px; height: 18px; border-radius: 50%;
+  background: rgba(0,0,0,.55); color: #fff;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 12px; cursor: pointer; line-height: 1;
+}
+.img-remove:hover { background: #e74c3c; }
+.img-add-btn {
+  width: 64px; height: 64px; border-radius: 6px;
+  border: 1px dashed #ccc; cursor: pointer;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  color: #999; transition: all .2s;
+}
+.img-add-btn:hover { border-color: #2d8cf0; color: #2d8cf0; }
 </style>

@@ -95,3 +95,10 @@ exports.checkLikes = async (req, res) => {
   )
   success(res, rows.map(r => r.comment_id))
 }
+
+// 上传评论图片（返回可访问的图片 URL）
+exports.uploadImage = async (req, res) => {
+  if (!req.file) return fail(res, '请上传图片')
+  success(res, { url: `/uploads/images/${req.file.filename}` })
+}
+
