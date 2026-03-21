@@ -1,7 +1,7 @@
 /**
  * 随机组队服务
- * 功能：定时从匹配池中筛选兼容用户，自动创建活动和群聊
- * 由 node-cron 每5分钟触发一次
+ * 功能：从匹配池中筛选兼容用户，自动创建活动和群聊
+ * 触发方式：用户加入时即时触发 + node-cron 每1分钟兜底触发
  */
 const { MatchPool, Activity, ActivityMember, ChatRoom, User, sequelize } = require('../models')
 const { Op } = require('sequelize')

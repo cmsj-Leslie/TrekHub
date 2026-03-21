@@ -46,8 +46,12 @@ exports.updateSkills = async (req, res) => {
   const { tagIds } = req.body
   await sequelize.query('DELETE FROM user_skills WHERE user_id = ?', { replacements: [req.user.id] })
   if (tagIds?.length) {
-    const values = tagIds.map(tid => `(${req.user.id}, ${tid})`).join(',')
-    await sequelize.query(`INSERT INTO user_skills (user_id, tag_id) VALUES ${values}`)
+    const safeTids = tagIds.map(Number).filter(n => Number.isInteger(n) && n > 0)
+    if (safeTids.length) {
+      const placeholders = safeTids.map(() => '(?, ?)').join(',')
+      await sequelize.query(`INSERT INTO user_skills (user_id, tag_id) VALUES ${placeholders}`,
+        { replacements: safeTids.flatMap(tid => [req.user.id, tid]) })
+    }
   }
   success(res, null, '技能标签已更新')
 }

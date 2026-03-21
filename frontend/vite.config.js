@@ -11,7 +11,16 @@ export default defineConfig(({ mode }) => {
   const apiTarget = env.VITE_API_BASE_URL || 'http://localhost:3000' // 后端地址
 
   return {
-    plugins: [vue()],
+    plugins: [
+      vue(),
+      // 自定义插件：将 index.html 中的 %VITE_XXX% 替换为 .env 中的实际值
+      {
+        name: 'html-env-replace',
+        transformIndexHtml(html) {
+          return html.replace(/%(\w+)%/g, (_, key) => env[key] || '')
+        }
+      }
+    ],
     resolve: {
       alias: { '@': resolve(__dirname, 'src') } // @ 指向 src 目录
     },

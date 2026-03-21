@@ -4,6 +4,7 @@
  */
 const { MatchPool, User } = require('../models')
 const { success, fail } = require('../utils/response')
+const matchService = require('../services/matchService')
 
 // 加入匹配池（设置偏好线路、日期、等级范围、技能标签）
 exports.join = async (req, res) => {
@@ -11,7 +12,13 @@ exports.join = async (req, res) => {
   await MatchPool.upsert({
     user_id: req.user.id, route_id, prefer_date, min_level, max_level, skill_tags, status: 1
   })
-  success(res, null, '已加入组队池，系统每5分钟匹配一次')
+  success(res, null, '已加入组队池，正在为你匹配队友')
+
+  // 异步立即触发一次匹配（不阻塞响应）
+  const io = req.app.get('io')
+  matchService.runMatching(io).catch(err => {
+    console.error('[即时匹配失败]', err.message)
+  })
 }
 
 // 退出匹配池

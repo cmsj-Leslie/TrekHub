@@ -22,6 +22,9 @@ const io = new Server(server, {
   cors: { origin: ['http://localhost:5173', 'http://127.0.0.1:5173'], credentials: true }
 })
 
+// 将 io 挂载到 app，以便控制器中通过 req.app.get('io') 获取
+app.set('io', io)
+
 // ========== 中间件 ==========
 app.use(cors({ origin: ['http://localhost:5173', 'http://127.0.0.1:5173'], credentials: true }))
 app.use(express.json({ limit: '10mb' }))                          // 解析 JSON 请求体
@@ -45,8 +48,8 @@ app.use('/api/docs',       require('./src/routes/docs'))       // API 文档
 // ========== WebSocket 实时通信 ==========
 chatHandler(io)
 
-// ========== 定时任务：每5分钟执行一次随机组队匹配 ==========
-cron.schedule('*/5 * * * *', () => {
+// ========== 定时任务：每1分钟执行一次随机组队匹配（兜底） ==========
+cron.schedule('*/1 * * * *', () => {
   matchService.runMatching(io).catch(console.error)
 })
 

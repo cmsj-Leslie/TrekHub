@@ -4,7 +4,7 @@
     <div class="match-banner">
       <div class="banner-content">
         <h2>🎲 随机组队</h2>
-        <p>系统每 5 分钟自动匹配，找到志同道合的队友</p>
+        <p>加入即时匹配，快速找到志同道合的队友</p>
       </div>
       <div class="banner-stats">
         <div class="pool-stat">
@@ -25,7 +25,7 @@
           <div v-else class="status-idle-icon">🎯</div>
           <div class="status-text">
             <h3>{{ inPool ? '正在匹配中...' : '未加入组队池' }}</h3>
-            <p>{{ inPool ? '系统正在为你寻找匹配的队友，成功后将自动通知' : '设置偏好后加入匹配池，等待系统为你精准配对' }}</p>
+            <p>{{ inPool ? '系统正在为你即时匹配队友，成功后将自动通知' : '设置偏好后加入匹配池，系统将即时为你配对' }}</p>
           </div>
         </div>
 
